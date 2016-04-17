@@ -8,11 +8,13 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	// "os"
 	"strconv"
 
+	// "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/kontza/rpi_temp_logger/controller/settings"
-	"github.com/kontza/rpi_temp_logger/util"
+	"github.com/kontza/goatmospi/controller/settings"
+	"github.com/kontza/goatmospi/util"
 )
 
 // book model
@@ -159,6 +161,7 @@ func getNextId() int {
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("Request URL: %v\n", r.URL)
 	type TemplateContext struct {
 		SubDomain string
 	}
@@ -174,11 +177,17 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func loggingHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Println(r.Method, r.URL.Path)
+		h.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	// command line flags
-	port := flag.Int("port", 80, "port to serve on")
-	dir := flag.String("directory", "web/", "directory of web files")
-	// pathPrefix := flag.String("path", "atmospi", "path namespace of this web app")
+	port := flag.Int("port", 4002, "port to serve on")
+	dir := flag.String("directory", "web/static", "directory of web files")
 	flag.Parse()
 
 	// handle all requests by serving a file of the same name
@@ -194,7 +203,7 @@ func main() {
 	router.Handle("/books/{id}", handler(getBook)).Methods("GET")
 	router.Handle("/books/{id}", handler(updateBook)).Methods("POST")
 	router.Handle("/books/{id}", handler(removeBook)).Methods("DELETE")
-	router.PathPrefix("/atmospi_static/").Handler(http.StripPrefix("/atmospi_static", fileHandler))
+	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", loggingHandler(fileHandler)))
 	http.Handle("/", router)
 
 	// bootstrap some data
