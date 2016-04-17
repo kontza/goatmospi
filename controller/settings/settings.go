@@ -3,7 +3,7 @@ package settings
 import (
 	"net/http"
 
-	"github.com/kontza/rpi_temp_logger/util"
+	"github.com/kontza/goatmospi/util"
 )
 
 // book model

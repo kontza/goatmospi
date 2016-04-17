@@ -187,7 +187,7 @@ func loggingHandler(h http.Handler) http.Handler {
 func main() {
 	// command line flags
 	port := flag.Int("port", 4002, "port to serve on")
-	dir := flag.String("directory", "web/static", "directory of web files")
+	dir := flag.String("directory", "web", "directory of web files")
 	flag.Parse()
 
 	// handle all requests by serving a file of the same name
@@ -203,7 +203,7 @@ func main() {
 	router.Handle("/books/{id}", handler(getBook)).Methods("GET")
 	router.Handle("/books/{id}", handler(updateBook)).Methods("POST")
 	router.Handle("/books/{id}", handler(removeBook)).Methods("DELETE")
-	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", loggingHandler(fileHandler)))
+	router.PathPrefix("/static/").Handler(fileHandler)
 	http.Handle("/", router)
 
 	// bootstrap some data
