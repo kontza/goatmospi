@@ -3,6 +3,8 @@ package settings
 import (
 	"net/http"
 
+	"github.com/gorilla/mux"
+	rh "github.com/kontza/goatmospi/route_handler"
 	"github.com/kontza/goatmospi/util"
 )
 
@@ -23,4 +25,8 @@ type Settings struct {
 
 func GetSettings(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
 	return Settings{"log.db", 60 * 60 * 24 * 7, 2, "C"}, nil
+}
+
+func RegisterRoutes(router *mux.Router) {
+	router.Handle("/settings", rh.RouteHandler(GetSettings)).Methods("GET")
 }
