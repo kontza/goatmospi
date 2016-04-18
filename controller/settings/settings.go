@@ -1,6 +1,9 @@
 package settings
 
 import (
+	"encoding/json"
+	"io/ioutil"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -23,8 +26,24 @@ type Settings struct {
 	TemperatureUnit string `json:"t_unit"`
 }
 
+var settings Settings
+
+/**
+ * Read settings from a JSON-file.
+ * @param {[type]} yamlFile string [description]
+ */
+func LoadSettings(filename string) {
+	file, e := ioutil.ReadFile(filename)
+	if e != nil {
+		log.Printf("File error: %v\n", e)
+		return
+	}
+	json.Unmarshal(file, &settings)
+	log.Printf("%+v\n", settings)
+}
+
 func GetSettings(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
-	return Settings{"log.db", 60 * 60 * 24 * 7, 2, "C"}, nil
+	return settings, nil
 }
 
 func RegisterRoutes(router *mux.Router) {

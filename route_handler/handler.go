@@ -26,7 +26,7 @@ func (fn RouteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if response == nil {
-		log.Printf("ERROR: response from method is nil\n")
+		log.Printf("ERROR: response from method is nil.\n")
 		http.Error(w, "Internal server error. Check the logs.", http.StatusInternalServerError)
 		return
 	}
@@ -34,7 +34,7 @@ func (fn RouteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// turn the response into JSON
 	bytes, e := json.Marshal(response)
 	if e != nil {
-		http.Error(w, "Error marshalling JSON", http.StatusInternalServerError)
+		http.Error(w, "Error marshalling JSON.", http.StatusInternalServerError)
 		return
 	}
 
