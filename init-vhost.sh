@@ -1,18 +1,18 @@
-#!/bin/sh
+#!/bin/bash
 __ATMOSPI_STATIC="$(pwd)/web/static"
+__ATMOSPI_PREFIX="goatmospi"
+__CONF_NAME="000-$__ATMOSPI_PREFIX.conf"
 rm 000-atmospi.conf >& /dev/null
-cat << EOF > 000-atmospi.conf
+cat << EOF > $__CONF_NAME
 <VirtualHost *:80>
     ProxyRequests Off
-    Alias "/static" $__ATMOSPI_STATIC
-    <Directory $__ATMOSPI_STATIC>
-        Require all granted
-    </Directory>
-    <Location /atmospi>
-        RequestHeader    set Atmospi-Prefix-Path "atmospi"
+    <Location /$__ATMOSPI_PREFIX>
+        RequestHeader    set Atmospi-Prefix-Path "$__ATMOSPI_PREFIX"
         ProxyPass        http://localhost:4002
         ProxyPassReverse http://localhost:4002
     </Location>
 </VirtualHost>
 EOF
-echo Next: 'sudo ln -sf $PWD/000-atmospi.conf /etc/apache2/sites-enabled/'
+echo Next:
+echo "sudo ln -sf \$PWD/$__CONF_NAME /etc/apache2/sites-enabled/"
+echo "sudo apache2ctl restart"
