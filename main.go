@@ -5,13 +5,11 @@ import (
 	"flag"
 	"fmt"
 	htpl "html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
-	// "os"
-	"strconv"
+	"os"
 
-	// "github.com/gorilla/handlers"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/kontza/goatmospi/controller/settings"
 	"github.com/kontza/goatmospi/util"
@@ -62,104 +60,9 @@ func (fn handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%s %s %s %d", r.RemoteAddr, r.Method, r.URL, 200)
 }
 
-func listBooks(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
-	return books, nil
-}
-
-func getBook(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
-	// mux.Vars grabs variables from the path
-	param := mux.Vars(r)["id"]
-	id, e := strconv.Atoi(param)
-	if e != nil {
-		return nil, &util.HandlerError{e, "Id should be an integer", http.StatusBadRequest}
-	}
-	b, index := getBookById(id)
-
-	if index < 0 {
-		return nil, &util.HandlerError{nil, "Could not find book " + param, http.StatusNotFound}
-	}
-
-	return b, nil
-}
-
-func parseBookRequest(r *http.Request) (book, *util.HandlerError) {
-	// the book payload is in the request body
-	data, e := ioutil.ReadAll(r.Body)
-	if e != nil {
-		return book{}, &util.HandlerError{e, "Could not read request", http.StatusBadRequest}
-	}
-
-	// turn the request body (JSON) into a book object
-	var payload book
-	e = json.Unmarshal(data, &payload)
-	if e != nil {
-		return book{}, &util.HandlerError{e, "Could not parse JSON", http.StatusBadRequest}
-	}
-
-	return payload, nil
-}
-
-func addBook(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
-	payload, e := parseBookRequest(r)
-	if e != nil {
-		return nil, e
-	}
-
-	// it's our job to assign IDs, ignore what (if anything) the client sent
-	payload.Id = getNextId()
-	books = append(books, payload)
-
-	// we return the book we just made so the client can see the ID if they want
-	return payload, nil
-}
-
-func updateBook(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
-	payload, e := parseBookRequest(r)
-	if e != nil {
-		return nil, e
-	}
-
-	_, index := getBookById(payload.Id)
-	books[index] = payload
-	return make(map[string]string), nil
-}
-
-func removeBook(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
-	param := mux.Vars(r)["id"]
-	id, e := strconv.Atoi(param)
-	if e != nil {
-		return nil, &util.HandlerError{e, "Id should be an integer", http.StatusBadRequest}
-	}
-	// this is jsut to check to see if the book exists
-	_, index := getBookById(id)
-
-	if index < 0 {
-		return nil, &util.HandlerError{nil, "Could not find entry " + param, http.StatusNotFound}
-	}
-
-	// remove a book from the list
-	books = append(books[:index], books[index+1:]...)
-	return make(map[string]string), nil
-}
-
-// searches the books for the book with `id` and returns the book and it's index, or -1 for 404
-func getBookById(id int) (book, int) {
-	for i, b := range books {
-		if b.Id == id {
-			return b, i
-		}
-	}
-	return book{}, -1
-}
-
 var id = 0
 
-// increments id and returns the value
-func getNextId() int {
-	id += 1
-	return id
-}
-
+// Build the main index.html.
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("Request URL: %v\n", r.URL)
 	type TemplateContext struct {
@@ -198,22 +101,10 @@ func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/", indexHandler).Methods("GET")
 	router.Handle("/settings", handler(settings.GetSettings)).Methods("GET")
-	router.Handle("/books", handler(listBooks)).Methods("GET")
-	router.Handle("/books", handler(addBook)).Methods("POST")
-	router.Handle("/books/{id}", handler(getBook)).Methods("GET")
-	router.Handle("/books/{id}", handler(updateBook)).Methods("POST")
-	router.Handle("/books/{id}", handler(removeBook)).Methods("DELETE")
-	router.PathPrefix("/static/").Handler(fileHandler)
+	router.PathPrefix("/static").Handler(handlers.LoggingHandler(os.Stderr, fileHandler))
 	http.Handle("/", router)
 
-	// bootstrap some data
-	books = append(books, book{"Ender's Game", "Orson Scott Card", getNextId()})
-	books = append(books, book{"Code Complete", "Steve McConnell", getNextId()})
-	books = append(books, book{"World War Z", "Max Brooks", getNextId()})
-	books = append(books, book{"Pragmatic Programmer", "David Thomas", getNextId()})
-
 	log.Printf("Running on port %d\n", *port)
-
 	addr := fmt.Sprintf("127.0.0.1:%d", *port)
 	// this call blocks -- the progam runs here forever
 	err := http.ListenAndServe(addr, nil)
