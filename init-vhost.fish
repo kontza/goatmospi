@@ -2,7 +2,7 @@
 set -l __ATMOSPI_STATIC "$PWD/web/static"
 set -l __ATMOSPI_PREFIX (basename $PWD)
 set -l __CONF_NAME "000-$__ATMOSPI_PREFIX.conf"
-rm $__CONF_NAME ^&1
+rm $__CONF_NAME ^/dev/null
 echo -n "<VirtualHost *:80>
     ProxyRequests Off
     <Location /$__ATMOSPI_PREFIX>
