@@ -1,7 +1,6 @@
 package data
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -18,7 +17,7 @@ var db *gorm.DB
 
 type TimedTemperature struct {
 	Timestamp   int
-	Temperature float32
+	Temperature float64
 }
 
 func loadDatabase() {
@@ -36,63 +35,54 @@ func loadDatabase() {
 }
 
 func GetLatestTemperature(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
-	// Build a dictionary of data.
-	// var data map[string]TimedTemperature
-
 	var devices []Device
-	db.Find(&devices)
-	for index, device := range devices {
-		log.Printf("Device #%d: %v", index, device)
+	tUnit := settings.GetSettingsData().TemperatureUnit
+	db.Where("Type in (?)", []string{"ds18b20", "dht22", "dht11", "am2302"}).Find(&devices)
+	data := make(map[string][]string)
+	var latestTemperature float64
+	for _, device := range devices {
+		var latest Temperature
+		db.Where("DeviceID = ?", device.DeviceID).Order("Timestamp desc").Limit(1).Find(&latest)
+		if tUnit == "C" {
+			latestTemperature = latest.C
+		} else {
+			latestTemperature = latest.F
+		}
+		data[device.Label] = []string{fmt.Sprintf("%d", latest.Timestamp), fmt.Sprintf("%f", latestTemperature)}
 	}
-
-	// Select all temperature devices.
-	/*
-	   devices = db.select("SELECT DeviceID, Label FROM Devices WHERE Type IN ('ds18b20', 'dht22', 'dht11', 'am2302')")
-
-	   # Iterate through the devices.
-	   for device in devices:
-
-	       # Get the latest temperature.
-	       args = (device[0],)
-	       rows = db.select("SELECT Timestamp, " + settings['t_unit'] + " FROM Temperature WHERE DeviceID = ? ORDER BY Timestamp DESC LIMIT 1", args)
-
-	       # Fill in the data.
-	       for row in rows:
-	           timestamp = int(str(row[0]) + '000')
-	           label = device[1]
-	           temperature = row[1]
-	           data[label] = [timestamp, temperature]
-
-	   # Return as a string.
-	   logger.info("/data/latest/temperature: {}".format(json.dumps(data)))
-	   # /data/latest/temperature: {"28-000003ea01f5": [1461046802000, 4.38]}
-	   return json.dumps(data)
-	*/
-	return `{"28-000003ea01f5": [1461046802000, 4.38]}`, nil
+	return data, nil
 }
 
 func GetLatestHumidity(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
-	return `{"28-000003ea01f5": [1461046802000, 4.38]}`, nil
+	var devices []Device
+	db.Where("Type in (?)", []string{"dht22", "dht11", "am2302"}).Find(&devices)
+	data := make(map[string][]string)
+	for _, device := range devices {
+		var latest Humidity
+		db.Where("DeviceID = ?", device.DeviceID).Order("Timestamp desc").Limit(1).Find(&latest)
+		data[device.Label] = []string{fmt.Sprintf("%d", latest.Timestamp), fmt.Sprintf("%f", latest.H)}
+	}
+	return data, nil
 }
 
 func GetTemperatureDevices(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
 	var devices []Device
 	data := make(map[string]string)
-	db.Find(&devices)
+	db.Where("Type in (?)", []string{"ds18b20", "dht22", "dht11", "am2302"}).Find(&devices)
 	for _, device := range devices {
 		data[fmt.Sprintf("%d", device.DeviceID)] = device.Label
 	}
-	j, err := json.Marshal(data)
-	log.Printf("Devices: %s", j)
-	var retErr util.HandlerError
-	if err != nil {
-		retErr = util.HandlerError{err, "Marshalling failed.", 500}
-	}
-	return j, &retErr
+	return data, nil
 }
 
 func GetHumidityDevices(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
-	return "HUMI", nil
+	var devices []Device
+	data := make(map[string]string)
+	db.Where("Type in (?)", []string{"dht22", "dht11", "am2302"}).Find(&devices)
+	for _, device := range devices {
+		data[fmt.Sprintf("%d", device.DeviceID)] = device.Label
+	}
+	return data, nil
 }
 
 func GetLatest(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
