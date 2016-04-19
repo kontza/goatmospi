@@ -42,6 +42,10 @@ func LoadSettings(filename string) {
 	log.Printf("%+v\n", settings)
 }
 
+func GetSettingsData() Settings {
+	return settings
+}
+
 func GetSettings(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
 	return settings, nil
 }
