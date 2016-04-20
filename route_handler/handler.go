@@ -41,5 +41,11 @@ func (fn RouteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// send the response and log
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(bytes)
-	log.Printf("%s %s %s %d", r.RemoteAddr, r.Method, r.URL, 200)
+	count := 256
+	ellipsis := "…"
+	if len(bytes) < count {
+		count = len(bytes)
+		ellipsis = ""
+	}
+	log.Printf("%s %s %s %d %s%s", r.RemoteAddr, r.Method, r.URL, 200, bytes[:count], ellipsis)
 }

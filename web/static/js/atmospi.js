@@ -50,7 +50,7 @@ $(function() {
         var chart = new Highcharts.Chart({
             chart: {
                 renderTo: 'graph',
-                zoomType: 'xy'
+                zoomType: 'x'
             },
             title: {
                 text: 'Measurements by device:'
