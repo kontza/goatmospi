@@ -39,7 +39,7 @@ func main() {
 	flag.Parse()
 
 	// Load settings.
-	settings.LoadSettings("./goatmospi.json")
+	settings.LoadSettings("goatmospi.json")
 
 	// handle all requests by serving a file of the same name
 	fs := http.Dir(*dir)

@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os/user"
+	"strings"
 
 	"github.com/gorilla/mux"
 	rh "github.com/kontza/goatmospi/route_handler"
@@ -28,6 +30,14 @@ type Settings struct {
 
 var settings Settings
 
+func getHomeDir() string {
+	usr, err := user.Current()
+	if err != nil {
+		log.Fatal(err)
+	}
+	return usr.HomeDir
+}
+
 /**
  * Read settings from a JSON-file.
  * @param {[type]} yamlFile string [description]
@@ -40,6 +50,11 @@ func LoadSettings(filename string) {
 	}
 	json.Unmarshal(file, &settings)
 	log.Printf("%+v\n", settings)
+	// Expand environment: $HOME and '~' replaced by the actual path.
+	homeDir := getHomeDir()
+	settings.DB = strings.Replace(settings.DB, "$HOME", homeDir, -1)
+	settings.DB = strings.Replace(settings.DB, "~", homeDir, -1)
+	log.Printf("DB: %+v\n", settings.DB)
 }
 
 func GetSettingsData() Settings {
