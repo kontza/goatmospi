@@ -44,7 +44,9 @@ $(function() {
         });
 
         // Calculate freezing temperature based on temperature unit.
-        var freezing = (settings.t_unit === 'F') ? 32 : 0;
+        var freezing = (settings.t_unit === 'F') ? 32 : 0,
+            xAxisMin = atmosPiConf.latestTimestamp - 24 * 60 * 60 * 1000,
+            xAxisMax = atmosPiConf.latestTimestamp;
 
         // Set up the Highcharts graph.
         var chart = new Highcharts.Chart({
@@ -69,8 +71,9 @@ $(function() {
                     year: '%Y'
                 },
                 gridLineWidth: 1,
-                min: now.getTime() - 24 * 60 * 60 * 1000, // Default visible range of 1 day.
-                max: now.getTime()
+                // Default visible range of 1 day.
+                min: xAxisMin,
+                max: xAxisMax
             },
             yAxis: [{
                 title: {

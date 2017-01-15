@@ -3,7 +3,10 @@
 <head>
   <title>Atmospi (Go)</title>
   <script type="text/javascript">var atmosPiConf =
-    { subDomain: {{.SubDomain}} };
+    { subDomain: {{.SubDomain}},
+      oldestTimestamp: {{.OldestTimestamp}},
+      latestTimestamp: {{.LatestTimestamp}}
+    };
   </script>
   <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
   <script type="text/javascript" src="//code.highcharts.com/stock/highstock.js"></script>
