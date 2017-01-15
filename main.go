@@ -18,14 +18,17 @@ import (
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Request URL: %v\n", r.URL)
 	type TemplateContext struct {
-		SubDomain string
+		SubDomain       string
+		OldestTimestamp int
+		LatestTimestamp int
 	}
 	t, err := htpl.ParseFiles("web/index.html")
 	if err != nil {
 		log.Printf("template.ParseFiles failed: %q", err)
 	} else {
 		prefixPath := r.Header.Get("Atmospi-Prefix-Path")
-		err = t.Execute(w, &TemplateContext{prefixPath})
+		oldest, newest := data.GetTimestampRange()
+		err = t.Execute(w, &TemplateContext{prefixPath, oldest, newest})
 		if err != nil {
 			log.Printf("t.Execute failed: %q", err)
 		}
