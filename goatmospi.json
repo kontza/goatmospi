@@ -1,6 +1,0 @@
-{
-    "db": "$HOME/.config/goatmospi/log.db",
-    "range_seconds": 604800,
-    "precision": 2,
-    "t_unit": "C"
-}

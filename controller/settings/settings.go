@@ -15,9 +15,6 @@ import (
 
 // book model
 type Settings struct {
-	// Absolute path to the SQLite database file.
-	DB string `json:"db"`
-
 	// How far into the past should data be loaded (in seconds)? Default to 1 week.
 	RangeSeconds int `json:"range_seconds"`
 

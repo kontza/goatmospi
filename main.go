@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	htpl "html/template"
-	"log"
 	"net/http"
 	"os"
 
@@ -12,6 +11,14 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/kontza/goatmospi/controller/data"
 	"github.com/kontza/goatmospi/controller/settings"
+	"github.com/kylelemons/go-gypsy/yaml"
+	logging "github.com/op/go-logging"
+)
+
+// command line flags
+var (
+	file = flag.String("file", "goatmospi.yml", "Application settings YAML.")
+	log  = logging.MustGetLogger("goatmospi")
 )
 
 // Build the main index.html.
@@ -36,13 +43,24 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	// command line flags
-	port := flag.Int("port", 4002, "port to serve on")
-	dir := flag.String("directory", "web", "directory of web files")
 	flag.Parse()
 
 	// Load settings.
-	settings.LoadSettings("goatmospi.json")
+	config, err := yaml.ReadFile(*file)
+	if err != nil {
+		log.Fatalf("Failed to read the config file (%q): %s", *file, err)
+	}
+	address, err := config.Get("address")
+	if err != nil {
+		log.Errorf("Config error: %s", err)
+		address = "127.0.0.1"
+	}
+	port, err := config.Get("port")
+	if err != nil {
+		log.Errorf("Config error: %s", err)
+		port = "4002"
+	}
+	log.Infof("Address: %s:%s", config.Get("address"), config.Get("port"))
 
 	// handle all requests by serving a file of the same name
 	fs := http.Dir(*dir)

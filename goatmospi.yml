@@ -1,0 +1,11 @@
+address: 0.0.0.0
+port: 4002
+client:
+    range_seconds: 604800
+    precision: 2
+    t_unit: C
+db:
+    hostname: otsonkolo
+    name: atmospi
+    user: atmospi
+    password: atmospi
