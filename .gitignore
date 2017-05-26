@@ -2,3 +2,5 @@
 000-goatmospi.conf
 the.sublime-workspace
 /log.db
+.idea/libraries
+workspace.xml
