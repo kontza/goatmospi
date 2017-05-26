@@ -2,20 +2,23 @@ package data
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
-	// Import SQLite dialect.
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/kontza/goatmospi/controller/settings"
 	rh "github.com/kontza/goatmospi/route_handler"
 	"github.com/kontza/goatmospi/util"
+	"github.com/kontza/goatmospi/logger_factory"
+	"github.com/kontza/goatmospi/app_config"
 )
 
-var db *gorm.DB
+var (
+	db     *gorm.DB = nil
+	logger          = logger_factory.GetLogger()
+)
 
 // TimedTemperature is a struct for timestamp and temperature pairs.
 type TimedTemperature struct {
@@ -29,16 +32,19 @@ func (tt *TimedTemperature) MarshalJSON() ([]byte, error) {
 }
 
 func loadDatabase() {
+	if db != nil {
+		return
+	}
+	appConfig := app_config.GetApplicationConfig()
+	connString := fmt.Sprintf("host=%s user=%s dbname=%s password=%s sslmode=disable",
+		appConfig.Database.Hostname,
+		appConfig.Database.Name,
+		appConfig.Database.User,
+		appConfig.Database.Password)
 	var err error
-	if db == nil {
-		db, err = gorm.Open("sqlite3", settings.GetSettingsData().DB)
-		if err != nil {
-			log.Fatalf("DB open failed: %v", err)
-		} else {
-			log.Printf("Opened the DB '%v'.", settings.GetSettingsData().DB)
-		}
-	} else {
-		log.Printf("Reused the existing database connection.")
+	db, err = gorm.Open("postgres", connString)
+	if err != nil {
+		logger.Errorf("Connection to database failed: %s", err)
 	}
 }
 
@@ -112,7 +118,7 @@ func GetLatest(w http.ResponseWriter, r *http.Request) (interface{}, *util.Handl
 	loadDatabase()
 	vars := mux.Vars(r)
 	item := vars["item"]
-	log.Printf("Latest request: %v", item)
+	logger.Infof("Latest request: %v", item)
 	var retVal interface{}
 	var err *util.HandlerError
 	switch item {
@@ -129,7 +135,7 @@ func GetDevices(w http.ResponseWriter, r *http.Request) (interface{}, *util.Hand
 	loadDatabase()
 	vars := mux.Vars(r)
 	item := vars["item"]
-	log.Printf("Devices request: %v", item)
+	logger.Infof("Devices request: %v", item)
 	var retVal interface{}
 	var err *util.HandlerError
 	switch item {
@@ -166,13 +172,13 @@ func GetTemperatureData(w http.ResponseWriter, r *http.Request, deviceID int64, 
 		count = len(data)
 		ellipsis = ""
 	}
-	log.Printf("Data: %d %v%s", len(data), data[:count], ellipsis)
+	logger.Infof("Data: %d %v%s", len(data), data[:count], ellipsis)
 	return data, nil
 }
 
 // GetHumidityData returns nil, since humidity sensors are not (yet) supported.
 func GetHumidityData(w http.ResponseWriter, r *http.Request, deviceID int64, rangeMin float64, rangeMax float64) (interface{}, *util.HandlerError) {
-	log.Printf("Data: nil")
+	logger.Infof("Data: nil")
 	return 0, nil
 }
 
@@ -180,7 +186,7 @@ func GetHumidityData(w http.ResponseWriter, r *http.Request, deviceID int64, ran
 func GetDeviceData(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
 	loadDatabase()
 	vars := mux.Vars(r)
-	log.Printf("Device data request: %v, %v", vars["deviceId"], vars["sensorType"])
+	logger.Infof("Device data request: %v, %v", vars["deviceId"], vars["sensorType"])
 	var retVal interface{}
 	var err util.HandlerError
 	rangeMin := 0.0

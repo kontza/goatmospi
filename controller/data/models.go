@@ -4,54 +4,47 @@ import (
 	_ "github.com/jinzhu/gorm"
 )
 
-/*
-CREATE TABLE Devices(DeviceID INTEGER PRIMARY KEY, Type TEXT, SerialID TEXT, Label TEXT);
-CREATE TABLE Temperature(DeviceID INT, Timestamp INT, C REAL, F REAL);
-CREATE TABLE Humidity(DeviceID INT, Timestamp INT, H REAL);
-CREATE TABLE Flag(DeviceID INT, Timestamp INT, Value TEXT);
-CREATE INDEX temperature_dt ON Temperature(DeviceID, Timestamp);
-CREATE INDEX humidity_dt ON Humidity(DeviceID, Timestamp);
-CREATE INDEX flag_dt ON Flag(DeviceID, Timestamp);
-*/
-
 type Device struct {
-	DeviceID uint   `gorm:"primary_key;column:DeviceID"`
-	Type     string `gorm:"column:Type"`
-	SerialID string `gorm:"column:SerialID"`
-	Label    string `gorm:"column:Label"`
+	DeviceID uint   `gorm:"primary_key;index:devices_pkey;column:deviceid"`
+	Type     string `gorm:"column:type"`
+	SerialID string `gorm:"column:serialid"`
+	Label    string `gorm:"column:label"`
 }
 
 func (Device) TableName() string {
-	return "Devices"
+	return "devices"
 }
 
 type Temperature struct {
-	DeviceID  uint    `gorm:"primary_key;index:temperature_dt;column:DeviceID"`
-	Timestamp int     `gorm:"index:temperature_dt;column:Timestamp"`
-	C         float64 `gorm:"column:C"`
-	F         float64 `gorm:"column:F"`
+	ID        uint    `gorm:"primary_key;index:temperature_pkey;column:id"`
+	DeviceID  uint    `gorm:"column:deviceid"`
+	Timestamp int     `gorm:"index:temperature_dt;column:timestamp"`
+	C         float64 `gorm:"column:c"`
+	F         float64 `gorm:"column:f"`
 }
 
 func (Temperature) TableName() string {
-	return "Temperature"
+	return "temperature"
 }
 
 type Humidity struct {
-	DeviceID  uint    `gorm:"primary_key;index:humidity_dt;column:DeviceID"`
-	Timestamp int     `gorm:"index:humidity_dt;column:Timestamp"`
-	H         float64 `gorm:"column:H"`
+	ID        uint    `gorm:"primary_key;index:humidity_pkey;column:id"`
+	DeviceID  uint    `gorm:"column:deviceid"`
+	Timestamp int     `gorm:"index:humidity_dt;column:timestamp"`
+	H         float64 `gorm:"column:h"`
 }
 
 func (Humidity) TableName() string {
-	return "Humidity"
+	return "humidity"
 }
 
 type Flag struct {
-	DeviceID  uint   `gorm:"primary_key;index:flag_dt;column:DeviceID"`
+	ID        uint   `gorm:"primary_key;index:flag_pkey;column:id"`
+	DeviceID  uint   `gorm:"column:deviceid"`
 	Timestamp int    `gorm:"index:flag_dt;column:Timestamp"`
-	Value     string `gorm:"column:Value"`
+	Value     string `gorm:"column:value"`
 }
 
 func (Flag) TableName() string {
-	return "Flag"
+	return "flag"
 }

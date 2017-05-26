@@ -1,31 +1,17 @@
 package settings
 
 import (
-	"encoding/json"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os/user"
-	"strings"
 
 	"github.com/gorilla/mux"
 	rh "github.com/kontza/goatmospi/route_handler"
 	"github.com/kontza/goatmospi/util"
+	"github.com/kontza/goatmospi/app_config"
 )
 
-// book model
-type Settings struct {
-	// How far into the past should data be loaded (in seconds)? Default to 1 week.
-	RangeSeconds int `json:"range_seconds"`
-
-	// The number of digits after the decimal place that will be stored.
-	Precision int `json:"precision"`
-
-	// Temperature unit of measure (C or F).
-	TemperatureUnit string `json:"t_unit"`
-}
-
-var settings Settings
+var settings app_config.Client
 
 func getHomeDir() string {
 	usr, err := user.Current()
@@ -35,26 +21,7 @@ func getHomeDir() string {
 	return usr.HomeDir
 }
 
-/**
- * Read settings from a JSON-file.
- * @param {[type]} yamlFile string [description]
- */
-func LoadSettings(filename string) {
-	file, e := ioutil.ReadFile(filename)
-	if e != nil {
-		log.Printf("File error: %v\n", e)
-		return
-	}
-	json.Unmarshal(file, &settings)
-	log.Printf("%+v\n", settings)
-	// Expand environment: $HOME and '~' replaced by the actual path.
-	homeDir := getHomeDir()
-	settings.DB = strings.Replace(settings.DB, "$HOME", homeDir, -1)
-	settings.DB = strings.Replace(settings.DB, "~", homeDir, -1)
-	log.Printf("DB: %+v\n", settings.DB)
-}
-
-func GetSettingsData() Settings {
+func GetSettingsData() app_config.Client {
 	return settings
 }
 

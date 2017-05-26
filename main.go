@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	htpl "html/template"
 	"net/http"
@@ -10,20 +9,42 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/kontza/goatmospi/controller/data"
+	"github.com/kontza/goatmospi/app_config"
 	"github.com/kontza/goatmospi/controller/settings"
-	"github.com/kylelemons/go-gypsy/yaml"
-	logging "github.com/op/go-logging"
+	flags "github.com/jessevdk/go-flags"
+	"github.com/juju/loggo"
+	"github.com/kontza/goatmospi/logger_factory"
 )
 
-// command line flags
 var (
-	file = flag.String("file", "goatmospi.yml", "Application settings YAML.")
-	log  = logging.MustGetLogger("goatmospi")
+	// Command line flags.
+	Options struct {
+		Version bool   `short:"V" long:"version" description:"Show version information"`
+		Verbose []bool   `short:"v" long:"verbose" description:"Show verbose debug information"`
+		File    string `short:"f" long:"file" default:"goatmospi.yml" description:"The configuration file (YAML) to use for the operations." value-name:"FILE"`
+	}
+	logger= logger_factory.GetLogger()
+	appConfig = app_config.ApplicationConfig{
+		"127.0.0.1",
+		"web",
+		"4002",
+		app_config.Client{
+			"604800",
+			"2",
+			"C",
+		},
+		app_config.Database{
+			"localhost",
+			"dbname",
+			"dbuser",
+			"password",
+		},
+	}
 )
 
 // Build the main index.html.
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Request URL: %v\n", r.URL)
+	logger.Infof("Request URL: %v\n", r.URL)
 	type TemplateContext struct {
 		SubDomain       string
 		OldestTimestamp int
@@ -31,39 +52,47 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	t, err := htpl.ParseFiles("web/index.html")
 	if err != nil {
-		log.Printf("template.ParseFiles failed: %q", err)
+		logger.Infof("template.ParseFiles failed: %q", err)
 	} else {
 		prefixPath := r.Header.Get("Atmospi-Prefix-Path")
 		oldest, newest := data.GetTimestampRange()
 		err = t.Execute(w, &TemplateContext{prefixPath, oldest, newest})
 		if err != nil {
-			log.Printf("t.Execute failed: %q", err)
+			logger.Infof("t.Execute failed: %q", err)
 		}
 	}
 }
 
 func main() {
-	flag.Parse()
-
-	// Load settings.
-	config, err := yaml.ReadFile(*file)
-	if err != nil {
-		log.Fatalf("Failed to read the config file (%q): %s", *file, err)
+	if _, err := flags.Parse(&Options); err != nil {
+		if flagsErr, ok := err.(*flags.Error); ok && flagsErr.Type == flags.ErrHelp {
+			os.Exit(0)
+		} else {
+			println("Exit 1")
+			os.Exit(1)
+		}
 	}
-	address, err := config.Get("address")
-	if err != nil {
-		log.Errorf("Config error: %s", err)
-		address = "127.0.0.1"
+	// Increase verboseness.
+	logLevel := loggo.WARNING
+	for range Options.Verbose {
+		logLevel--
 	}
-	port, err := config.Get("port")
-	if err != nil {
-		log.Errorf("Config error: %s", err)
-		port = "4002"
+	if logLevel<loggo.TRACE {
+		logLevel = loggo.TRACE
 	}
-	log.Infof("Address: %s:%s", config.Get("address"), config.Get("port"))
+	logger.SetLogLevel(logLevel)
+	logger.Debugf("Current level: %s", logger.LogLevel().String())
+	if Options.Version {
+		println("Goatmospi v1.0")
+		return
+	} else {
+		logger.Infof("Initial YAML-config: %+v", appConfig)
+		appConfig = app_config.ReadConfig(Options.File, appConfig)
+		logger.Infof("Current YAML-config: %+v", appConfig)
+	}
 
 	// handle all requests by serving a file of the same name
-	fs := http.Dir(*dir)
+	fs := http.Dir(appConfig.DirToServe)
 	fileHandler := http.FileServer(fs)
 
 	// setup routes
@@ -74,9 +103,9 @@ func main() {
 	router.PathPrefix("/static").Handler(handlers.LoggingHandler(os.Stderr, fileHandler))
 	http.Handle("/", router)
 
-	log.Printf("Running on port %d\n", *port)
-	addr := fmt.Sprintf("127.0.0.1:%d", *port)
+	addr := fmt.Sprintf("%s:%s", appConfig.Address, appConfig.Port)
+	logger.Infof("Listening on %s...", addr)
 	// this call blocks -- the progam runs here forever
 	err := http.ListenAndServe(addr, nil)
-	log.Println(err.Error())
+	logger.Infof(err.Error())
 }

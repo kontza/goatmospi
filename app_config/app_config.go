@@ -1,14 +1,16 @@
-package main
+package app_config
 
 import (
 	"path/filepath"
 	"io/ioutil"
 	"gopkg.in/yaml.v2"
+	"github.com/kontza/goatmospi/logger_factory"
 )
 
 // ApplicationConfig contains the application configuration.
 type ApplicationConfig struct {
 	Address string `yaml:"address,omitempty"`
+	DirToServe string `yaml:"dir_to_serve,omitempty"`
 	Port    string `yaml:"port,omitempty"`
 	Client
 	Database `yaml:"db"`
@@ -29,12 +31,16 @@ type Database struct {
 	Password string `yaml:"password,omitempty"`
 }
 
+var (
+	appConfig ApplicationConfig
+	logger    = logger_factory.GetLogger()
+)
 
 /**
 Read application config from the YAML.
 */
-func readConfig() ApplicationConfig {
-	filename, _ := filepath.Abs(options.File)
+func ReadConfig(configFile string, defaultConfig ApplicationConfig) ApplicationConfig {
+	filename, _ := filepath.Abs(configFile)
 	yamlFile, err := ioutil.ReadFile(filename)
 
 	if err != nil {
@@ -54,32 +60,33 @@ func readConfig() ApplicationConfig {
 		Copy initial values where read values were empty.
 	*/
 	if _config.Address == "" {
-		_config.Address = appConfig.Address
+		_config.Address = defaultConfig.Address
 	}
 	if _config.Port == "" {
-		_config.Port = appConfig.Port
+		_config.Port = defaultConfig.Port
 	}
 	if _config.Client.RangeSeconds == "" {
-		_config.Client.RangeSeconds = appConfig.Client.RangeSeconds
+		_config.Client.RangeSeconds = defaultConfig.Client.RangeSeconds
 	}
 	if _config.Client.Precision == "" {
-		_config.Client.Precision = appConfig.Client.Precision
+		_config.Client.Precision = defaultConfig.Client.Precision
 	}
 	if _config.Client.TemperatureUnit == "" {
-		_config.Client.TemperatureUnit = appConfig.Client.TemperatureUnit
+		_config.Client.TemperatureUnit = defaultConfig.Client.TemperatureUnit
 	}
 	if _config.Database.Hostname == "" {
-		_config.Database.Hostname = appConfig.Database.Hostname
+		_config.Database.Hostname = defaultConfig.Database.Hostname
 	}
 	if _config.Database.Name == "" {
-		_config.Database.Name = appConfig.Database.Name
+		_config.Database.Name = defaultConfig.Database.Name
 	}
 	if _config.Database.User == "" {
-		_config.Database.User = appConfig.Database.User
+		_config.Database.User = defaultConfig.Database.User
 	}
 	if _config.Database.Password == "" {
-		_config.Database.Password = appConfig.Database.Password
+		_config.Database.Password = defaultConfig.Database.Password
 	}
+	appConfig = _config
 	return _config
 }
 
@@ -87,5 +94,5 @@ func readConfig() ApplicationConfig {
 Return the Application Config -object.
  */
 func GetApplicationConfig() ApplicationConfig {
-	return appConfig;
+	return appConfig
 }

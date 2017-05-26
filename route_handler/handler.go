@@ -3,10 +3,14 @@ package route_handler
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/kontza/goatmospi/util"
+	"github.com/kontza/goatmospi/logger_factory"
+)
+
+var (
+	logger = logger_factory.GetLogger()
 )
 
 // a custom type that we can use for handling errors and formatting responses
@@ -21,12 +25,12 @@ func (fn RouteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// check for errors
 	if err != nil {
-		log.Printf("ERROR: %v\n", err.Error)
+		logger.Infof("ERROR: %v\n", err.Error)
 		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Message), err.Code)
 		return
 	}
 	if response == nil {
-		log.Printf("ERROR: response from method is nil.\n")
+		logger.Infof("ERROR: response from method is nil.\n")
 		http.Error(w, "Internal server error. Check the logs.", http.StatusInternalServerError)
 		return
 	}
@@ -47,5 +51,5 @@ func (fn RouteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		count = len(bytes)
 		ellipsis = ""
 	}
-	log.Printf("%s %s %s %d %s%s", r.RemoteAddr, r.Method, r.URL, 200, bytes[:count], ellipsis)
+	logger.Infof("%s %s %s %d %s%s", r.RemoteAddr, r.Method, r.URL, 200, bytes[:count], ellipsis)
 }
