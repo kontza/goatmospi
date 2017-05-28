@@ -6,7 +6,8 @@ client:
     precision: 2
     t_unit: C
 db:
-    hostname: otsonkolo
+    hostname: localhost
+    port: 65432
     name: atmospi
     user: atmospi
     password: atmospi

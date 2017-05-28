@@ -35,6 +35,7 @@ var (
 		},
 		app_config.Database{
 			"localhost",
+			"5432",
 			"dbname",
 			"dbuser",
 			"password",

@@ -36,8 +36,9 @@ func loadDatabase() {
 		return
 	}
 	appConfig := app_config.GetApplicationConfig()
-	connString := fmt.Sprintf("host=%s user=%s dbname=%s password=%s sslmode=disable",
+	connString := fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s sslmode=disable",
 		appConfig.Database.Hostname,
+		appConfig.Database.Port,
 		appConfig.Database.Name,
 		appConfig.Database.User,
 		appConfig.Database.Password)

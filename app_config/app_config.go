@@ -26,6 +26,7 @@ type Client struct {
 // Database is the inner struct for DB configuration.
 type Database struct {
 	Hostname string `yaml:"hostname,omitempty"`
+	Port  string `yaml:"port,omitempty"`
 	Name     string `yaml:"name,omitempty"`
 	User     string `yaml:"user,omitempty"`
 	Password string `yaml:"password,omitempty"`
@@ -76,6 +77,9 @@ func ReadConfig(configFile string, defaultConfig ApplicationConfig) ApplicationC
 	}
 	if _config.Database.Hostname == "" {
 		_config.Database.Hostname = defaultConfig.Database.Hostname
+	}
+	if _config.Database.Port == "" {
+		_config.Database.Port = defaultConfig.Database.Port
 	}
 	if _config.Database.Name == "" {
 		_config.Database.Name = defaultConfig.Database.Name
