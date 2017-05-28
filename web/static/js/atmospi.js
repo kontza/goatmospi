@@ -140,6 +140,7 @@ $(function() {
             },
             plotOptions: {
                 series: {
+                    gapSize: 5,
                     marker: {
                         radius: 1
                     }

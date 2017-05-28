@@ -13,6 +13,7 @@ import (
 	"github.com/kontza/goatmospi/util"
 	"github.com/kontza/goatmospi/logger_factory"
 	"github.com/kontza/goatmospi/app_config"
+	"math"
 )
 
 var (
@@ -22,13 +23,34 @@ var (
 
 // TimedTemperature is a struct for timestamp and temperature pairs.
 type TimedTemperature struct {
-	Timestamp   int
-	Temperature float64
+	Timestamp   int `json:"timestamp"`
+	Temperature float64 `json:"temperature"`
+}
+
+// FromTemperatureC converts a Celsius Temperature into a TimedTemperature.
+func FromTemperature(temperature Temperature) *TimedTemperature {
+	retVal := new(TimedTemperature)
+	retVal.Timestamp = 1000 * temperature.Timestamp
+	if settings.GetSettingsData().TemperatureUnit == "C" {
+		retVal.Temperature = temperature.C
+	} else {
+		retVal.Temperature = temperature.F
+	}
+	return retVal
 }
 
 // MarshalJSON converts a TimedTemperature into a JSON.
 func (tt *TimedTemperature) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf("[%d, %f]", 1000*tt.Timestamp, tt.Temperature)), nil
+}
+
+func Round(f float64) float64 {
+	return math.Floor(f + .5)
+}
+
+func RoundPlus(f float64, places int) (float64) {
+	shift := math.Pow(10, float64(places))
+	return Round(f * shift) / shift;
 }
 
 func loadDatabase() {
@@ -62,19 +84,13 @@ func GetTimestampRange() (int, int) {
 // GetLatestTemperature gets the latest temperature from all the devices.
 func GetLatestTemperature(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
 	var devices []Device
-	tUnit := settings.GetSettingsData().TemperatureUnit
 	db.Where("Type in (?)", []string{"ds18b20", "dht22", "dht11", "am2302"}).Find(&devices)
-	data := make(map[string][]string)
-	var latestTemperature float64
+	data := make(map[string][]float64)
 	for _, device := range devices {
 		var latest Temperature
 		db.Where("DeviceID = ?", device.DeviceID).Order("Timestamp desc").Limit(1).Find(&latest)
-		if tUnit == "C" {
-			latestTemperature = latest.C
-		} else {
-			latestTemperature = latest.F
-		}
-		data[device.Label] = []string{fmt.Sprintf("%d", 1000*latest.Timestamp), fmt.Sprintf("%.2f", latestTemperature)}
+		timedTemperature := FromTemperature(latest)
+		data[device.Label] = []float64{float64(timedTemperature.Timestamp), RoundPlus(timedTemperature.Temperature,2)}
 	}
 	return data, nil
 }
@@ -165,7 +181,7 @@ func GetTemperatureData(w http.ResponseWriter, r *http.Request, deviceID int64, 
 		} else {
 			currentTemperature = temp.F
 		}
-		data = append(data, TimedTemperature{temp.Timestamp, currentTemperature})
+		data = append(data, TimedTemperature{temp.Timestamp, RoundPlus(currentTemperature,2)})
 	}
 	count := 20
 	ellipsis := "…"

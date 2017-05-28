@@ -1,9 +1,7 @@
 package settings
 
 import (
-	"log"
 	"net/http"
-	"os/user"
 
 	"github.com/gorilla/mux"
 	rh "github.com/kontza/goatmospi/route_handler"
@@ -11,22 +9,26 @@ import (
 	"github.com/kontza/goatmospi/app_config"
 )
 
-var settings app_config.Client
+type ClientSettings struct {
+	// How far into the past should data be loaded (in seconds)? Default to 1 week.
+	RangeSeconds string `json:"range_seconds"`
 
-func getHomeDir() string {
-	usr, err := user.Current()
-	if err != nil {
-		log.Fatal(err)
-	}
-	return usr.HomeDir
+	// The number of digits after the decimal place that will be stored.
+	Precision string `json:"precision"`
+
+	// Temperature unit of measure (C or F).
+	TemperatureUnit string `json:"t_unit"`
 }
 
-func GetSettingsData() app_config.Client {
-	return settings
+func GetSettingsData() ClientSettings {
+	currentConfig := app_config.GetApplicationConfig().Client
+	return ClientSettings{currentConfig.RangeSeconds,
+	currentConfig.Precision,
+	currentConfig.TemperatureUnit}
 }
 
 func GetSettings(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
-	return settings, nil
+	return GetSettingsData(), nil
 }
 
 func RegisterRoutes(router *mux.Router) {
