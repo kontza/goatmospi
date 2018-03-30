@@ -2,67 +2,31 @@ package main
 
 import (
 	"fmt"
-	htpl "html/template"
-	"net/http"
 	"os"
+	"path"
 
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
-	"github.com/kontza/goatmospi/controller/data"
-	"github.com/kontza/goatmospi/app_config"
-	"github.com/kontza/goatmospi/controller/settings"
+	"github.com/gin-gonic/gin"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/juju/loggo"
+	"github.com/kontza/goatmospi/app_config"
 	"github.com/kontza/goatmospi/logger_factory"
+	rh "github.com/kontza/goatmospi/route_handler"
+	// Load the modules so that they can register their routes.
+	_ "github.com/kontza/goatmospi/controller/data"
+	_ "github.com/kontza/goatmospi/controller/index"
+	_ "github.com/kontza/goatmospi/controller/settings"
 )
 
 var (
 	// Command line flags.
 	Options struct {
 		Version bool   `short:"V" long:"version" description:"Show version information"`
-		Verbose []bool   `short:"v" long:"verbose" description:"Show verbose debug information"`
-		File    string `short:"f" long:"file" default:"goatmospi.yml" description:"The configuration file (YAML) to use for the operations." value-name:"FILE"`
+		Verbose []bool `short:"v" long:"verbose" description:"Show verbose debug information"`
+		File    string `short:"c" long:"config" default:"goatmospi.yml" description:"The configuration file (YAML) to use for the operations." value-name:"FILE"`
 	}
-	logger= logger_factory.GetLogger()
-	appConfig = app_config.ApplicationConfig{
-		"127.0.0.1",
-		"web",
-		"4002",
-		app_config.Client{
-			"604800",
-			"2",
-			"C",
-		},
-		app_config.Database{
-			"localhost",
-			"5432",
-			"dbname",
-			"dbuser",
-			"password",
-		},
-	}
+	logger    = logger_factory.GetLogger()
+	appConfig = app_config.ApplicationConfig{}
 )
-
-// Build the main index.html.
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-	logger.Infof("Request URL: %v\n", r.URL)
-	type TemplateContext struct {
-		SubDomain       string
-		OldestTimestamp int
-		LatestTimestamp int
-	}
-	t, err := htpl.ParseFiles("web/index.html")
-	if err != nil {
-		logger.Infof("template.ParseFiles failed: %q", err)
-	} else {
-		prefixPath := r.Header.Get("Atmospi-Prefix-Path")
-		oldest, newest := data.GetTimestampRange()
-		err = t.Execute(w, &TemplateContext{prefixPath, oldest, newest})
-		if err != nil {
-			logger.Infof("t.Execute failed: %q", err)
-		}
-	}
-}
 
 func main() {
 	if _, err := flags.Parse(&Options); err != nil {
@@ -78,7 +42,7 @@ func main() {
 	for range Options.Verbose {
 		logLevel--
 	}
-	if logLevel<loggo.TRACE {
+	if logLevel < loggo.TRACE {
 		logLevel = loggo.TRACE
 	}
 	logger.SetLogLevel(logLevel)
@@ -87,26 +51,21 @@ func main() {
 		println("Goatmospi v1.0")
 		return
 	} else {
-		logger.Infof("Initial YAML-config: %+v", appConfig)
-		appConfig = app_config.ReadConfig(Options.File, appConfig)
-		logger.Infof("Current YAML-config: %+v", appConfig)
+		appConfig = app_config.ReadConfig(Options.File) // , appConfig)
 	}
 
-	// handle all requests by serving a file of the same name
-	fs := http.Dir(appConfig.DirToServe)
-	fileHandler := http.FileServer(fs)
+	// Set up Gin.
+	ginRouter := gin.Default()
+	ginRouter.StaticFile("/favicon.png", "./resources/favicon.png")
+	ginRouter.Static("/static", path.Join(appConfig.DirToServe, "static"))
+	ginRouter.LoadHTMLGlob("templates/*")
 
 	// setup routes
-	router := mux.NewRouter()
-	router.HandleFunc("/", indexHandler).Methods("GET")
-	settings.RegisterRoutes(router)
-	data.RegisterRoutes(router)
-	router.PathPrefix("/static").Handler(handlers.LoggingHandler(os.Stderr, fileHandler))
-	http.Handle("/", router)
+	logger.Infof("Setting up routes...")
+	rh.RegisterRoutes(ginRouter)
 
+	// Start the server.
 	addr := fmt.Sprintf("%s:%s", appConfig.Address, appConfig.Port)
 	logger.Infof("Listening on %s...", addr)
-	// this call blocks -- the progam runs here forever
-	err := http.ListenAndServe(addr, nil)
-	logger.Infof(err.Error())
+	ginRouter.Run(addr)
 }

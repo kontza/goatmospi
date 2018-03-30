@@ -1,55 +1,53 @@
 package route_handler
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
-
 	"github.com/kontza/goatmospi/util"
-	"github.com/kontza/goatmospi/logger_factory"
+	"log"
+	"github.com/gin-gonic/gin"
+	"strings"
 )
 
-var (
-	logger = logger_factory.GetLogger()
-)
+type RoutingData struct {
+	Method  string
+	Route   string
+	Handler gin.HandlerFunc
+}
 
 // a custom type that we can use for handling errors and formatting responses
 type RouteHandler func(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError)
 
-// attach the standard ServeHTTP method to our handler so the http library can call it
-func (fn RouteHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// here we could do some prep work before calling the handler if we wanted to
+var (
+	routes []RoutingData
+)
 
-	// call the actual handler
-	response, err := fn(w, r)
+/**
+AddRouteHandler adds a new handler to the array of registered route handlers.
+ */
+func AddRouteHandler(newEntry RoutingData) {
+	log.Printf(">>> Route handler added for %s", newEntry.Route)
+	routes = append(routes, newEntry)
+}
 
-	// check for errors
-	if err != nil {
-		logger.Infof("ERROR: %v\n", err.Error)
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Message), err.Code)
-		return
-	}
-	if response == nil {
-		logger.Infof("ERROR: response from method is nil.\n")
-		http.Error(w, "Internal server error. Check the logs.", http.StatusInternalServerError)
-		return
-	}
+/**
+GetRouteHandlers returns the array of currently registered route handlers.
+ */
+func GetRouteHandlers() []RoutingData {
+	return routes
+}
 
-	// turn the response into JSON
-	bytes, e := json.Marshal(response)
-	if e != nil {
-		http.Error(w, "Error marshalling JSON.", http.StatusInternalServerError)
-		return
+/**
+Add the registered route handlers to the given Gin router.
+ */
+func RegisterRoutes(r *gin.Engine) {
+	for _, route := range routes {
+		switch strings.ToLower(route.Method) {
+		case "get":
+			r.GET(route.Route, route.Handler)
+			break
+		case "post":
+			r.POST(route.Route, route.Handler)
+			break
+		}
 	}
-
-	// send the response and log
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(bytes)
-	count := 256
-	ellipsis := "…"
-	if len(bytes) < count {
-		count = len(bytes)
-		ellipsis = ""
-	}
-	logger.Infof("%s %s %s %d %s%s", r.RemoteAddr, r.Method, r.URL, 200, bytes[:count], ellipsis)
 }

@@ -1,12 +1,10 @@
 package settings
 
 import (
-	"net/http"
-
-	"github.com/gorilla/mux"
 	rh "github.com/kontza/goatmospi/route_handler"
-	"github.com/kontza/goatmospi/util"
 	"github.com/kontza/goatmospi/app_config"
+	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
 type ClientSettings struct {
@@ -23,14 +21,14 @@ type ClientSettings struct {
 func GetSettingsData() ClientSettings {
 	currentConfig := app_config.GetApplicationConfig().Client
 	return ClientSettings{currentConfig.RangeSeconds,
-	currentConfig.Precision,
-	currentConfig.TemperatureUnit}
+						  currentConfig.Precision,
+						  currentConfig.TemperatureUnit}
 }
 
-func GetSettings(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
-	return GetSettingsData(), nil
+func GetSettings(ctx *gin.Context) {
+	ctx.JSON(http.StatusOK, GetSettingsData())
 }
 
-func RegisterRoutes(router *mux.Router) {
-	router.Handle("/settings", rh.RouteHandler(GetSettings)).Methods("GET")
+func init() {
+	rh.AddRouteHandler(rh.RoutingData{"GET", "/settings", GetSettings})
 }

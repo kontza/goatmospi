@@ -2,18 +2,17 @@ package data
 
 import (
 	"fmt"
-	"net/http"
 	"strconv"
 
-	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/kontza/goatmospi/controller/settings"
 	rh "github.com/kontza/goatmospi/route_handler"
-	"github.com/kontza/goatmospi/util"
 	"github.com/kontza/goatmospi/logger_factory"
 	"github.com/kontza/goatmospi/app_config"
 	"math"
+	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
 var (
@@ -25,6 +24,12 @@ var (
 type TimedTemperature struct {
 	Timestamp   int `json:"timestamp"`
 	Temperature float64 `json:"temperature"`
+}
+
+func respondWithError(code int, message string, ctx *gin.Context) {
+	resp := map[string]string{"error": message}
+	ctx.JSON(code, resp)
+	ctx.Abort()
 }
 
 // FromTemperatureC converts a Celsius Temperature into a TimedTemperature.
@@ -50,7 +55,7 @@ func Round(f float64) float64 {
 
 func RoundPlus(f float64, places int) (float64) {
 	shift := math.Pow(10, float64(places))
-	return Round(f * shift) / shift;
+	return Round(f*shift) / shift;
 }
 
 func loadDatabase() {
@@ -68,6 +73,7 @@ func loadDatabase() {
 	db, err = gorm.Open("postgres", connString)
 	if err != nil {
 		logger.Errorf("Connection to database failed: %s", err)
+		panic("Cannot continue.")
 	}
 }
 
@@ -82,90 +88,56 @@ func GetTimestampRange() (int, int) {
 }
 
 // GetLatestTemperature gets the latest temperature from all the devices.
-func GetLatestTemperature(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
+func GetLatestTemperature(ctx *gin.Context) {
 	var devices []Device
 	db.Where("Type in (?)", []string{"ds18b20", "dht22", "dht11", "am2302"}).Find(&devices)
-	data := make(map[string][]float64)
+	temperatureData := make(map[string][]float64)
 	for _, device := range devices {
 		var latest Temperature
 		db.Where("DeviceID = ?", device.DeviceID).Order("Timestamp desc").Limit(1).Find(&latest)
 		timedTemperature := FromTemperature(latest)
-		data[device.Label] = []float64{float64(timedTemperature.Timestamp), RoundPlus(timedTemperature.Temperature,2)}
+		temperatureData[device.Label] = []float64{float64(timedTemperature.Timestamp), RoundPlus(timedTemperature.Temperature, 2)}
 	}
-	return data, nil
+	ctx.JSON(http.StatusOK, temperatureData)
 }
 
 // GetLatestHumidity gets the latest humidity data from all the sensors.
-func GetLatestHumidity(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
+func GetLatestHumidity(ctx *gin.Context) {
 	var devices []Device
 	db.Where("Type in (?)", []string{"dht22", "dht11", "am2302"}).Find(&devices)
-	data := make(map[string][]string)
+	devicesData := make(map[string][]float64)
 	for _, device := range devices {
 		var latest Humidity
 		db.Where("DeviceID = ?", device.DeviceID).Order("Timestamp desc").Limit(1).Find(&latest)
-		data[device.Label] = []string{fmt.Sprintf("%d", 1000*latest.Timestamp), fmt.Sprintf("%f", latest.H)}
+		devicesData[device.Label] = []float64{float64(1000 * latest.Timestamp), latest.H}
 	}
-	return data, nil
+	ctx.JSON(http.StatusOK, devicesData)
 }
 
 // GetTemperatureDevices returns all temperature devices in the database.
-func GetTemperatureDevices(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
+func GetTemperatureDevices(ctx *gin.Context) {
 	var devices []Device
-	data := make(map[string]string)
+	devicesData := make(map[string]string)
 	db.Where("Type in (?)", []string{"ds18b20", "dht22", "dht11", "am2302"}).Find(&devices)
 	for _, device := range devices {
-		data[fmt.Sprintf("%d", device.DeviceID)] = device.Label
+		devicesData[fmt.Sprintf("%d", device.DeviceID)] = device.Label
 	}
-	return data, nil
+	ctx.JSON(http.StatusOK, devicesData)
 }
 
 // GetHumidityDevices returns all humidity devices in the database.
-func GetHumidityDevices(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
+func GetHumidityDevices(ctx *gin.Context) {
 	var devices []Device
-	data := make(map[string]string)
+	devicesData := make(map[string]string)
 	db.Where("Type in (?)", []string{"dht22", "dht11", "am2302"}).Find(&devices)
 	for _, device := range devices {
-		data[fmt.Sprintf("%d", device.DeviceID)] = device.Label
+		devicesData[fmt.Sprintf("%d", device.DeviceID)] = device.Label
 	}
-	return data, nil
-}
-
-// GetLatest returns the latest measurement for the given device type.
-func GetLatest(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
-	loadDatabase()
-	vars := mux.Vars(r)
-	item := vars["item"]
-	logger.Infof("Latest request: %v", item)
-	var retVal interface{}
-	var err *util.HandlerError
-	switch item {
-	case "temperature":
-		retVal, err = GetLatestTemperature(w, r)
-	case "humidity":
-		retVal, err = GetLatestHumidity(w, r)
-	}
-	return retVal, err
-}
-
-// GetDevices returns all devices in the system for the given sensor type.
-func GetDevices(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
-	loadDatabase()
-	vars := mux.Vars(r)
-	item := vars["item"]
-	logger.Infof("Devices request: %v", item)
-	var retVal interface{}
-	var err *util.HandlerError
-	switch item {
-	case "temperature":
-		retVal, err = GetTemperatureDevices(w, r)
-	case "humidity":
-		retVal, err = GetHumidityDevices(w, r)
-	}
-	return retVal, err
+	ctx.JSON(http.StatusOK, devicesData)
 }
 
 // GetTemperatureData returns temperature data for the given time range.
-func GetTemperatureData(w http.ResponseWriter, r *http.Request, deviceID int64, rangeMin float64, rangeMax float64) (interface{}, *util.HandlerError) {
+func GetTemperatureData(ctx *gin.Context, deviceID int64, rangeMin float64, rangeMax float64) {
 	var temps []Temperature
 	if rangeMin > 0 && rangeMax > 0 {
 		db.Where("DeviceID = ? and Timestamp between ? and ?", deviceID, rangeMin, rangeMax).Order("Timestamp asc").Find(&temps)
@@ -181,7 +153,7 @@ func GetTemperatureData(w http.ResponseWriter, r *http.Request, deviceID int64, 
 		} else {
 			currentTemperature = temp.F
 		}
-		data = append(data, TimedTemperature{temp.Timestamp, RoundPlus(currentTemperature,2)})
+		data = append(data, TimedTemperature{temp.Timestamp, RoundPlus(currentTemperature, 2)})
 	}
 	count := 20
 	ellipsis := "…"
@@ -190,60 +162,57 @@ func GetTemperatureData(w http.ResponseWriter, r *http.Request, deviceID int64, 
 		ellipsis = ""
 	}
 	logger.Infof("Data: %d %v%s", len(data), data[:count], ellipsis)
-	return data, nil
+	ctx.JSON(http.StatusOK, data)
 }
 
 // GetHumidityData returns nil, since humidity sensors are not (yet) supported.
-func GetHumidityData(w http.ResponseWriter, r *http.Request, deviceID int64, rangeMin float64, rangeMax float64) (interface{}, *util.HandlerError) {
+func GetHumidityData(ctx *gin.Context, deviceID int64, rangeMin float64, rangeMax float64) {
 	logger.Infof("Data: nil")
-	return 0, nil
+	result := map[string]string{"status": "ok"}
+	ctx.JSON(http.StatusOK, result)
 }
 
 // GetDeviceData returns a data set for the given device ID and sensor type.
-func GetDeviceData(w http.ResponseWriter, r *http.Request) (interface{}, *util.HandlerError) {
+func GetDeviceData(ctx *gin.Context) {
 	loadDatabase()
-	vars := mux.Vars(r)
-	logger.Infof("Device data request: %v, %v", vars["deviceId"], vars["sensorType"])
-	var retVal interface{}
-	var err util.HandlerError
 	rangeMin := 0.0
 	rangeMax := 0.0
-	queryArg := r.URL.Query().Get("range_min")
+	queryArg := ctx.Query("range_min")
 	var e error
 	if len(queryArg) > 0 {
 		rangeMin, e = strconv.ParseFloat(queryArg, 64)
 		if e != nil {
-			err = util.HandlerError{e, "range_min parse failed", 500}
-			return nil, &err
+			respondWithError(500, "range_min parse failed", ctx)
+			return
 		}
 	}
-	queryArg = r.URL.Query().Get("range_max")
+	queryArg = ctx.Query("range_max")
 	if len(queryArg) > 0 {
 		rangeMax, e = strconv.ParseFloat(queryArg, 64)
 		if e != nil {
-			err = util.HandlerError{e, "range_max parse failed", 500}
-			return nil, &err
+			respondWithError(500, "range_max parse failed", ctx)
 		}
 	}
 	var deviceId int64
-	deviceId, e = strconv.ParseInt(vars["deviceId"], 10, 32)
+	deviceId, e = strconv.ParseInt(ctx.Param("deviceId"), 10, 32)
 	if e != nil {
-		err = util.HandlerError{e, "deviceId parse failed", 500}
-		return nil, &err
+		respondWithError(http.StatusBadRequest, "deviceId parse filed", ctx)
 	}
-	var er *util.HandlerError
-	switch vars["sensorType"] {
+	switch ctx.Param("sensorType") {
 	case "temperature":
-		retVal, er = GetTemperatureData(w, r, deviceId, rangeMin/1000.0, rangeMax/1000.0)
+		GetTemperatureData(ctx, deviceId, rangeMin/1000.0, rangeMax/1000.0)
 	case "humidity":
-		retVal, er = GetHumidityData(w, r, deviceId, rangeMin/1000.0, rangeMax/1000.0)
+		GetHumidityData(ctx, deviceId, rangeMin/1000.0, rangeMax/1000.0)
+	default:
+		respondWithError(http.StatusBadRequest, "invalid sensorType", ctx)
 	}
-	return retVal, er
 }
 
-// RegisterRoutes registers routes that this module takes care of.
-func RegisterRoutes(router *mux.Router) {
-	router.Handle("/data/latest/{item}", rh.RouteHandler(GetLatest)).Methods("GET")
-	router.Handle("/data/devices/{item}", rh.RouteHandler(GetDevices)).Methods("GET")
-	router.Handle("/data/device/{deviceId}/{sensorType}", rh.RouteHandler(GetDeviceData)).Methods("GET")
+// Register routes that this module takes care of.
+func init() {
+	rh.AddRouteHandler(rh.RoutingData{"GET", "/data/latest/temperature", GetLatestTemperature})
+	rh.AddRouteHandler(rh.RoutingData{"GET", "/data/latest/humidity", GetLatestHumidity})
+	rh.AddRouteHandler(rh.RoutingData{"GET", "/data/devices/temperature", GetTemperatureDevices})
+	rh.AddRouteHandler(rh.RoutingData{"GET", "/data/devices/humidity", GetHumidityDevices})
+	rh.AddRouteHandler(rh.RoutingData{"GET", "/data/device/:deviceId/:sensorType", GetDeviceData})
 }

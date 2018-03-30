@@ -1,7 +1,7 @@
 /* globals Highcharts, atmosPiConf */
 
 // jshint jquery:true, strict: implied
-$(function() {
+$(function () {
     /**
      * Load latest measurements.
      */
@@ -11,16 +11,16 @@ $(function() {
         $('#summary').html('<h2>Latest Measurements:</h2>');
 
         // Load the latest temperature data.
-        $.getJSON(atmosPiConf.subDomain + '/data/latest/temperature', function(devices) {
-            $.each(devices, function(device, data) {
+        $.getJSON(atmosPiConf.subDomain + '/data/latest/temperature', function (devices) {
+            $.each(devices, function (device, data) {
                 // Insert the most recent measurements into the #summary div.
                 $('#summary').append('<div id="' + device + '">' + device + ' (temperature): <span class="measurement">' + data[1] + ' &deg;' + settings.t_unit + '</span> <span class="time">(' + Highcharts.dateFormat('%b %e, %Y - %H:%M', new Date(data[0])) + ')</span></div>');
             });
         });
 
         // Load the latest humidity data.
-        $.getJSON(atmosPiConf.subDomain + '/data/latest/humidity', function(devices) {
-            $.each(devices, function(device, data) {
+        $.getJSON(atmosPiConf.subDomain + '/data/latest/humidity', function (devices) {
+            $.each(devices, function (device, data) {
 
                 // Insert the most recent measurements into the #summary div.
                 $('#summary').append('<div id="' + device + '">' + device + ' (humidity): <span class="measurement">' + data[1] + ' %</span> <span class="time">(' + Highcharts.dateFormat('%b %e, %Y - %H:%M', new Date(data[0])) + ')</span></div>');
@@ -80,7 +80,7 @@ $(function() {
                     text: 'Temperature (°' + settings.t_unit + ')'
                 },
                 labels: {
-                    formatter: function() {
+                    formatter: function () {
                         return this.value + ' ' + settings.t_unit;
                     },
                 },
@@ -94,7 +94,7 @@ $(function() {
                     text: 'Humidity (%)'
                 },
                 labels: {
-                    formatter: function() {
+                    formatter: function () {
                         return this.value + '%';
                     },
                 }
@@ -103,6 +103,7 @@ $(function() {
                 enabled: true
             },
             rangeSelector: {
+                allButtonsEnabled: false,
                 enabled: true,
                 buttons: [{
                     type: 'day',
@@ -152,16 +153,16 @@ $(function() {
         chart.showLoading();
 
         // Load a list of temperature sensing devices.
-        $.getJSON(atmosPiConf.subDomain + '/data/devices/temperature', function(devices) {
+        $.getJSON(atmosPiConf.subDomain + '/data/devices/temperature', function (devices) {
 
             // Iterate through the devices...
-            $.each(devices, function(device, label) {
+            $.each(devices, function (device, label) {
 
                 // Turn the loading text on.
                 chart.showLoading();
 
                 // Load the device temperature data.
-                $.getJSON(atmosPiConf.subDomain + '/data/device/' + device + '/temperature', function(data) {
+                $.getJSON(atmosPiConf.subDomain + '/data/device/' + device + '/temperature', function (data) {
 
                     // Add it as a series to the chart.
                     var series = {
@@ -175,7 +176,7 @@ $(function() {
                     chart.addSeries(series);
 
                     // Load flags.
-                    $.getJSON(atmosPiConf.subDomain + '/data/device/' + device + '/flags', function(flags) {
+                    $.getJSON(atmosPiConf.subDomain + '/data/device/' + device + '/flags', function (flags) {
 
                         // If there are flags...
                         if (flags.length > 0) {
@@ -203,16 +204,16 @@ $(function() {
         });
 
         // Load a list of humidity sensing devices.
-        $.getJSON(atmosPiConf.subDomain + '/data/devices/humidity', function(devices) {
+        $.getJSON(atmosPiConf.subDomain + '/data/devices/humidity', function (devices) {
 
             // Iterate through the devices...
-            $.each(devices, function(device, label) {
+            $.each(devices, function (device, label) {
 
                 // Turn the loading text on.
                 chart.showLoading();
 
                 // Load the device humidity data.
-                $.getJSON(atmosPiConf.subDomain + '/data/device/' + device + '/humidity', function(data) {
+                $.getJSON(atmosPiConf.subDomain + '/data/device/' + device + '/humidity', function (data) {
 
                     // Add it as a series to the chart.
                     var series = {
@@ -238,7 +239,7 @@ $(function() {
     }
 
     // Load Atmospi settings and begin!
-    $.getJSON(atmosPiConf.subDomain + '/settings', function(settings) {
+    $.getJSON(atmosPiConf.subDomain + '/settings', function (settings) {
 
         // Load the latest measurements.
         loadLatestMeasurements(settings);
