@@ -1,0 +1,13 @@
+[Unit]
+Description=Goatmospi service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/opt/juruotsa/gopath/src/github.com/kontza/goatmospi
+ExecStart=/opt/juruotsa/gopath/src/github.com/kontza/goatmospi/goatmospi -vvv -f /opt/juruotsa/gopath/src/github.com/kontza/goatmospi/goatmospi.yml
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
